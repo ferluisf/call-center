@@ -1,12 +1,9 @@
 package com.am.call.dispatcher;
 
 import com.am.call.model.Call;
-import com.am.call.model.CallWrapper;
 import com.am.call.model.Employee;
 import junit.framework.Assert;
 import junit.framework.TestCase;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -17,28 +14,28 @@ public class EmployeeRunnableTest extends TestCase {
 
     public void testRun() throws InterruptedException {
         Employee mockEmployee = mock(Employee.class);
-        doAnswer(new Answer<Void>() {
-            public Void answer(InvocationOnMock invocationOnMock) throws Throwable {
-                Call call = invocationOnMock.getArgument(0);
-                call.process();
-                return null;
-            }
-        }).when(mockEmployee).takeCall(any(Call.class));
-
-        LinkedBlockingQueue<Call> callQueue = new LinkedBlockingQueue<Call>();
+        LinkedBlockingQueue<Call> callQueue = mock(LinkedBlockingQueue.class);
+        when(callQueue.take()).thenReturn(mock(Call.class)).thenThrow(new InterruptedException());
 
         EmployeeRunnable employeeRunnable = new EmployeeRunnable(mockEmployee, callQueue);
-        Thread thread = new Thread(employeeRunnable);
-        thread.start();
+        employeeRunnable.run();
 
-        CallWrapper call = new CallWrapper(1);
-        callQueue.put(call);
-        call.awaitFinished();
-
-        thread.interrupt();
-        thread.join(15000);
-
-        verify(mockEmployee, times(1)).takeCall(call);
-        Assert.assertFalse(thread.isAlive());
+        Assert.assertTrue(Thread.interrupted());
+        verify(callQueue, times(2)).take();
+        verify(mockEmployee, times(1)).takeCall(any(Call.class));
     }
+
+    public void testRunNotRun() throws InterruptedException {
+        Employee mockEmployee = mock(Employee.class);
+        LinkedBlockingQueue<Call> callQueue = mock(LinkedBlockingQueue.class);
+
+        EmployeeRunnable employeeRunnable = new EmployeeRunnable(mockEmployee, callQueue);
+        Thread.currentThread().interrupt();
+        employeeRunnable.run();
+
+        Assert.assertTrue(Thread.interrupted());
+        verify(callQueue, times(0)).take();
+        verify(mockEmployee, times(0)).takeCall(any(Call.class));
+    }
+
 }

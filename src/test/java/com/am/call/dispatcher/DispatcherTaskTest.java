@@ -28,6 +28,6 @@ public class DispatcherTaskTest extends TestCase {
         dispatcherTask.run();
 
         verify(callCenter, times(1)).waitFreeEmployeeAndDispatchCall(any(Call.class));
-        Assert.assertTrue(Thread.currentThread().isInterrupted());
+        Assert.assertTrue(Thread.interrupted());
     }
 }
